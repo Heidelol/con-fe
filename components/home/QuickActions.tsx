@@ -1,6 +1,5 @@
-"use client";
-
 import React from "react";
+import Link from "next/link";
 import {
   HeartIcon,
   CloudQuietIcon,
@@ -11,6 +10,7 @@ import {
 
 interface ActionItem {
   id: string;
+  slug: string;
   label: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
 }
@@ -18,21 +18,25 @@ interface ActionItem {
 const ACTIONS: ActionItem[] = [
   {
     id: "agradecer",
+    slug: "agradecer",
     label: "Agradecer",
     icon: HeartIcon,
   },
   {
     id: "preocupado",
+    slug: "preocupacion",
     label: "Estoy preocupado",
     icon: CloudQuietIcon,
   },
   {
     id: "pedir",
+    slug: "pedir",
     label: "Pedir por alguien",
     icon: HandsIcon,
   },
   {
     id: "paz",
+    slug: "paz",
     label: "Necesito paz",
     icon: DovePeaceIcon,
   },
@@ -45,9 +49,9 @@ export function QuickActions() {
         {ACTIONS.map((item) => {
           const Icon = item.icon;
           return (
-            <button
+            <Link
               key={item.id}
-              type="button"
+              href={`/orar/${item.slug}`}
               className="group flex flex-col items-start justify-between p-4 min-h-[92px] bg-white rounded-2xl border border-[#1F3443]/7 shadow-[0_1px_3px_rgba(31,52,67,0.02)] transition-all duration-200 hover:border-[#1F3443]/15 hover:shadow-[0_3px_12px_rgba(31,52,67,0.04)] active:scale-[0.985] active:bg-[#FAF8F5] text-left focus-visible:ring-2 focus-visible:ring-[#1F3443] focus-visible:outline-none"
             >
               <span className="w-8 h-8 rounded-xl bg-[#F7F4EE] flex items-center justify-center text-[#1F3443] transition-colors duration-200 group-hover:bg-[#DCE6EB]/50">
@@ -56,19 +60,19 @@ export function QuickActions() {
               <span className="mt-3 font-sans text-[14px] font-medium text-[#17212A] tracking-[-0.01em] leading-snug">
                 {item.label}
               </span>
-            </button>
+            </Link>
           );
         })}
       </div>
 
       <div className="flex justify-center mt-3">
-        <button
-          type="button"
+        <Link
+          href="/orar"
           className="inline-flex items-center gap-1.5 text-[13px] font-sans font-medium text-[#6F8796] hover:text-[#1F3443] transition-colors py-2 px-3 rounded-lg focus-visible:ring-2 focus-visible:ring-[#1F3443] focus-visible:outline-none active:opacity-75"
         >
           <span>Ver más</span>
           <ChevronRightIcon size={14} />
-        </button>
+        </Link>
       </div>
     </section>
   );
