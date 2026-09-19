@@ -6,6 +6,15 @@ import { PrayerSessionConfig } from "@/types/prayer";
 import { PrayerHeader } from "./PrayerHeader";
 import { PrayerExitDialog } from "./PrayerExitDialog";
 import { FutureFeatureDialog } from "./FutureFeatureDialog";
+
+// 5 Spiritual Moments Renderers
+import { ArrivalStep } from "./steps/ArrivalStep";
+import { VoiceResponseStep } from "./steps/VoiceResponseStep";
+import { ContinuousReflectionStep } from "./steps/ContinuousReflectionStep";
+import { SacredSilenceStep } from "./steps/SacredSilenceStep";
+import { SpiritualClosingStep } from "./steps/SpiritualClosingStep";
+
+// Legacy Step Renderers (for backward compatibility)
 import { ReflectionStep } from "./steps/ReflectionStep";
 import { TextPromptStep } from "./steps/TextPromptStep";
 import { ExpandableTextStep } from "./steps/ExpandableTextStep";
@@ -31,6 +40,7 @@ export function PrayerSession({ config }: PrayerSessionProps) {
 
   const currentStep = config.steps[currentStepIndex];
   const totalSteps = config.steps.length;
+  const currentMoment = currentStep?.momentIndex || (currentStepIndex + 1);
 
   function handleUpdateAnswer(fieldKey: string, value: string) {
     setAnswers((prev) => ({ ...prev, [fieldKey]: value }));
@@ -66,12 +76,12 @@ export function PrayerSession({ config }: PrayerSessionProps) {
     setIsFinishing(true);
     setTimeout(() => {
       router.push("/");
-    }, 1400);
+    }, 1800);
   }
 
   if (isFinishing) {
     return (
-      <div className="flex-1 min-h-[500px] flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 text-center">
+      <div className="flex-1 min-h-[500px] flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 text-center bg-[#F7F4EE] select-none">
         <div className="w-12 h-12 rounded-full bg-[#D3B58A]/20 flex items-center justify-center mb-6">
           <span className="w-2.5 h-2.5 rounded-full bg-[#D3B58A]" />
         </div>
@@ -87,10 +97,10 @@ export function PrayerSession({ config }: PrayerSessionProps) {
 
   return (
     <div className="flex-1 flex flex-col min-h-screen bg-[#F7F4EE]">
-      {/* Upper Navigation & Progress */}
+      {/* Upper Navigation & Continuous 5-Moment Progress */}
       <PrayerHeader
-        currentStep={currentStepIndex}
-        totalSteps={totalSteps}
+        currentMoment={currentMoment}
+        totalMoments={5}
         canGoBack={currentStepIndex > 0}
         onBack={handleBack}
         onClose={handleCloseRequest}
@@ -98,6 +108,63 @@ export function PrayerSession({ config }: PrayerSessionProps) {
 
       {/* Dynamic Step Content */}
       <main className="flex-1 flex flex-col">
+        {/* MOMENTO 1 — LLEGAR */}
+        {currentStep.type === "arrival" && (
+          <ArrivalStep
+            key={currentStep.id}
+            data={currentStep}
+            onNext={handleNext}
+            isPaused={isExitDialogOpen}
+          />
+        )}
+
+        {/* MOMENTO 2 — RECONOCER */}
+        {currentStep.type === "voice-response" && (
+          <VoiceResponseStep
+            key={currentStep.id}
+            data={currentStep}
+            value={answers[currentStep.fieldKey] || ""}
+            onChange={(val) => handleUpdateAnswer(currentStep.fieldKey, val)}
+            onNext={handleNext}
+          />
+        )}
+
+        {/* MOMENTO 3 — ORDENAR */}
+        {currentStep.type === "continuous-reflection" && (
+          <ContinuousReflectionStep
+            key={currentStep.id}
+            data={currentStep}
+            onNext={handleNext}
+            isPaused={isExitDialogOpen}
+          />
+        )}
+
+        {/* MOMENTO 4 — HABLAR CON DIOS */}
+        {currentStep.type === "sacred-silence" && (
+          <SacredSilenceStep
+            key={currentStep.id}
+            data={currentStep}
+            onNext={handleNext}
+            isPaused={isExitDialogOpen}
+          />
+        )}
+
+        {/* MOMENTO 5 — CIERRE ESPIRITUAL */}
+        {currentStep.type === "spiritual-closing" && (
+          <SpiritualClosingStep
+            key={currentStep.id}
+            data={currentStep}
+            onFinish={handleFinish}
+            onSaveIntention={() =>
+              handleSaveAction(
+                "Muy pronto podrás guardar este momento en tu espacio privado."
+              )
+            }
+            isPaused={isExitDialogOpen}
+          />
+        )}
+
+        {/* Legacy step fallbacks */}
         {currentStep.type === "reflection" && (
           <ReflectionStep
             key={currentStep.id}

@@ -1,4 +1,9 @@
 export type PrayerStepType =
+  | "arrival"
+  | "voice-response"
+  | "continuous-reflection"
+  | "sacred-silence"
+  | "spiritual-closing"
   | "reflection"
   | "text-prompt"
   | "text-prompt-expandable"
@@ -12,8 +17,87 @@ export type PrayerStepType =
 export interface BaseStep {
   id: string;
   type: PrayerStepType;
+  momentIndex?: number; // 1-indexed (1 to 5)
 }
 
+export interface AutoAdvanceConfig {
+  enabled: boolean;
+  durationSeconds: number;
+  allowSkip?: boolean;
+  skipText?: string;
+}
+
+// MOMENTO 1 — LLEGAR
+export interface ArrivalStepData extends BaseStep {
+  type: "arrival";
+  title: string;
+  subtitle: string;
+  autoAdvance: AutoAdvanceConfig;
+}
+
+// MOMENTO 2 — RECONOCER
+export interface VoiceResponseStepData extends BaseStep {
+  type: "voice-response";
+  title: string;
+  fieldKey: string;
+  speakLabel: string;
+  thinkLabel: string;
+  writeLabel: string;
+  mockPrompt: string;
+  mockNotice: string;
+  mockUseTextAction: string;
+  mockThinkAction: string;
+}
+
+// MOMENTO 3 — ORDENAR
+export interface ContinuousReflectionStepData extends BaseStep {
+  type: "continuous-reflection";
+  phaseA: {
+    title: string;
+    text: string;
+    durationSeconds: number;
+  };
+  phaseB: {
+    title: string;
+    text: string;
+    durationSeconds: number;
+  };
+  skipText: string;
+}
+
+// MOMENTO 4 — HABLAR CON DIOS
+export interface SacredSilenceStepData extends BaseStep {
+  type: "sacred-silence";
+  title: string;
+  subtitle: string;
+  privacyBadge: string;
+  silenceDurationSeconds: number;
+  extraTimeSeconds: number;
+  moreTimeText: string;
+  continueText: string;
+}
+
+// MOMENTO 5 — CIERRE ESPIRITUAL
+export interface SpiritualClosingStepData extends BaseStep {
+  type: "spiritual-closing";
+  optionalPrayer: {
+    title: string;
+    prayerLines: string[];
+    durationSeconds: number;
+    skipText: string;
+  };
+  scripture: {
+    title: string;
+    passage: string;
+    reference: string;
+    reflection: string;
+  };
+  saveIntentionText: string;
+  finishText: string;
+  farewellMessage: string;
+}
+
+// Legacy step interfaces for backward compatibility
 export interface ReflectionStepData extends BaseStep {
   type: "reflection";
   title: string;
@@ -107,6 +191,11 @@ export interface CompletionStepData extends BaseStep {
 }
 
 export type PrayerStep =
+  | ArrivalStepData
+  | VoiceResponseStepData
+  | ContinuousReflectionStepData
+  | SacredSilenceStepData
+  | SpiritualClosingStepData
   | ReflectionStepData
   | TextPromptStepData
   | TextPromptExpandableStepData
