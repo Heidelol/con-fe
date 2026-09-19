@@ -10,19 +10,20 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
-  const isPrayerSession = pathname?.startsWith("/orar/");
+  const isImmersiveSession =
+    pathname?.startsWith("/orar/") || pathname === "/hoy";
 
   return (
     <div className="min-h-screen w-full bg-[#F7F4EE] sm:bg-[#ECE7DE] flex justify-center selection:bg-[#DCE6EB] selection:text-[#1F3443]">
       {/* Mobile container - full width on mobile, centered max-w-[430px] on tablet/desktop */}
       <div className="relative w-full sm:max-w-[430px] min-h-screen bg-[#F7F4EE] flex flex-col sm:shadow-[0_8px_40px_rgba(31,52,67,0.06)] sm:border-x sm:border-[#1F3443]/6 transition-all">
         {/* Main scrollable content */}
-        <div className={`flex-1 flex flex-col ${isPrayerSession ? "" : "pb-28"}`}>
+        <div className={`flex-1 flex flex-col ${isImmersiveSession ? "" : "pb-28"}`}>
           {children}
         </div>
 
-        {/* Persistent bottom navigation - hidden during prayer sessions */}
-        {!isPrayerSession && <BottomNavigation />}
+        {/* Persistent bottom navigation - hidden during prayer and daily sessions */}
+        {!isImmersiveSession && <BottomNavigation />}
       </div>
     </div>
   );

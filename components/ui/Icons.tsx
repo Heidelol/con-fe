@@ -423,3 +423,112 @@ export function CheckIcon({ size = 18, className = "", ...props }: IconProps) {
   );
 }
 
+export function PauseIcon({ size = 20, className = "", ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      <rect x="6" y="4" width="4" height="16" rx="1" />
+      <rect x="14" y="4" width="4" height="16" rx="1" />
+    </svg>
+  );
+}
+
+export function Rewind15Icon({ size = 22, className = "", ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      {/* Curved arrow rotating counter-clockwise */}
+      <path d="M3.5 13a8.5 8.5 0 1 0 2.5-6L3 10" />
+      <path d="M3 4v6h6" />
+      {/* 15 text */}
+      <text
+        x="12"
+        y="16.5"
+        fontSize="7.5"
+        fontWeight="bold"
+        fill="currentColor"
+        stroke="none"
+        textAnchor="middle"
+        fontFamily="sans-serif"
+      >
+        15
+      </text>
+    </svg>
+  );
+}
+
+export function Forward15Icon({ size = 22, className = "", ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      {/* Curved arrow rotating clockwise */}
+      <path d="M20.5 13a8.5 8.5 0 1 1-2.5-6L21 10" />
+      <path d="M21 4v6h-6" />
+      {/* 15 text */}
+      <text
+        x="12"
+        y="16.5"
+        fontSize="7.5"
+        fontWeight="bold"
+        fill="currentColor"
+        stroke="none"
+        textAnchor="middle"
+        fontFamily="sans-serif"
+      >
+        15
+      </text>
+    </svg>
+  );
+}
+
+export function HeadphonesIcon({ size = 20, className = "", ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+      <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+    </svg>
+  );
+}
+
+
