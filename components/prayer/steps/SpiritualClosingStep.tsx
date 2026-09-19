@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { SpiritualClosingStepData } from "@/types/prayer";
 import { usePrayerAutoAdvance } from "@/hooks/usePrayerAutoAdvance";
+import { ContemplativeProgress } from "@/components/prayer/ContemplativeProgress";
 import { BookmarkIcon } from "@/components/ui/Icons";
 
 interface SpiritualClosingStepProps {
@@ -21,7 +22,7 @@ export function SpiritualClosingStep({
   const [phase, setPhase] = useState<"prayer" | "scripture">("prayer");
 
   // Timer for optional prayer phase (~14s)
-  const { skip: skipPrayer } = usePrayerAutoAdvance({
+  const { progress, skip: skipPrayer } = usePrayerAutoAdvance({
     enabled: phase === "prayer",
     durationSeconds: data.optionalPrayer.durationSeconds || 14,
     onAdvance: () => setPhase("scripture"),
@@ -59,11 +60,14 @@ export function SpiritualClosingStep({
             </div>
           </div>
 
-          <div className="w-full flex justify-center pt-6">
+          {/* Bottom Contemplative Progress & Skip CTA */}
+          <div className="w-full flex flex-col items-center gap-3 pt-6">
+            <ContemplativeProgress progress={progress} />
+
             <button
               type="button"
               onClick={skipPrayer}
-              className="text-xs sm:text-[13px] font-sans font-medium text-[#6F8796] hover:text-[#17212A] py-2 px-4 rounded-full hover:bg-[#1F3443]/5 transition-colors focus-visible:ring-2 focus-visible:ring-[#1F3443] focus-visible:outline-none cursor-pointer"
+              className="text-xs sm:text-[13px] font-sans font-medium text-[#6F8796] hover:text-[#17212A] py-1.5 px-4 rounded-full hover:bg-[#1F3443]/5 transition-colors focus-visible:ring-2 focus-visible:outline-none cursor-pointer"
             >
               {data.optionalPrayer.skipText || "Continuar ahora"}
             </button>
@@ -71,7 +75,7 @@ export function SpiritualClosingStep({
         </>
       )}
 
-      {/* 2. Phase B: Scripture & Closing */}
+      {/* 2. Phase B: Scripture & Closing (No auto-advance) */}
       {phase === "scripture" && (
         <div className="flex-1 flex flex-col justify-between animate-in fade-in duration-700">
           <div className="flex-1 flex flex-col pt-4">

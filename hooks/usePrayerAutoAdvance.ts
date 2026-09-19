@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 interface UsePrayerAutoAdvanceOptions {
   enabled: boolean;
@@ -9,90 +9,129 @@ interface UsePrayerAutoAdvanceOptions {
   isPaused?: boolean;
 }
 
+export interface PrayerAutoAdvanceReturn {
+  progress: number; // 0 to 1 (filling up)
+  remainingSeconds: number;
+  elapsedSeconds: number;
+  totalDurationSeconds: number;
+  skip: () => void;
+  extendTime: (extraSeconds: number) => void;
+}
+
 export function usePrayerAutoAdvance({
   enabled,
   durationSeconds,
   onAdvance,
   isPaused = false,
-}: UsePrayerAutoAdvanceOptions) {
-  const remainingMsRef = useRef(durationSeconds * 1000);
-  const startTimestampRef = useRef<number | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+}: UsePrayerAutoAdvanceOptions): PrayerAutoAdvanceReturn {
+  const [prevDuration, setPrevDuration] = useState(durationSeconds);
+  const [progress, setProgress] = useState(0);
+  const [remainingSeconds, setRemainingSeconds] = useState(durationSeconds);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [totalDurationSeconds, setTotalDurationSeconds] = useState(durationSeconds);
+
+  // Official React pattern for adjusting state when prop changes
+  if (prevDuration !== durationSeconds) {
+    setPrevDuration(durationSeconds);
+    setProgress(0);
+    setRemainingSeconds(durationSeconds);
+    setElapsedSeconds(0);
+    setTotalDurationSeconds(durationSeconds);
+  }
+
+  const totalDurationMsRef = useRef(durationSeconds * 1000);
+  const accumulatedElapsedMsRef = useRef(0);
+  const segmentStartRef = useRef<number | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const onAdvanceRef = useRef(onAdvance);
 
-  // Keep latest onAdvance callback without breaking effect dependencies
   useEffect(() => {
     onAdvanceRef.current = onAdvance;
   }, [onAdvance]);
 
-  // Keep remainingMs in sync with durationSeconds when step changes
-  useEffect(() => {
-    remainingMsRef.current = durationSeconds * 1000;
-  }, [durationSeconds]);
-
-  const clearExistingTimer = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
+  const clearTimer = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
   }, []);
 
   const triggerAdvance = useCallback(() => {
-    clearExistingTimer();
+    clearTimer();
     onAdvanceRef.current();
-  }, [clearExistingTimer]);
+  }, [clearTimer]);
 
   const extendTime = useCallback((extraSeconds: number) => {
     const extraMs = extraSeconds * 1000;
-    if (startTimestampRef.current !== null) {
-      const elapsed = Date.now() - startTimestampRef.current;
-      remainingMsRef.current = Math.max(0, remainingMsRef.current - elapsed) + extraMs;
-    } else {
-      remainingMsRef.current += extraMs;
-    }
+    totalDurationMsRef.current += extraMs;
+    const newTotalSeconds = Math.ceil(totalDurationMsRef.current / 1000);
+    setTotalDurationSeconds(newTotalSeconds);
 
-    // Restart timer with extended remaining time if active
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      startTimestampRef.current = Date.now();
-      timerRef.current = setTimeout(() => {
-        triggerAdvance();
-      }, remainingMsRef.current);
+    const now = Date.now();
+    let currentElapsed = accumulatedElapsedMsRef.current;
+    if (segmentStartRef.current !== null) {
+      currentElapsed += now - segmentStartRef.current;
     }
-  }, [triggerAdvance]);
+    const remainingMs = Math.max(0, totalDurationMsRef.current - currentElapsed);
+    const newRemainingSeconds = Math.ceil(remainingMs / 1000);
+    const newProgress = Math.min(1, currentElapsed / totalDurationMsRef.current);
+
+    setRemainingSeconds(newRemainingSeconds);
+    setProgress(newProgress);
+  }, []);
 
   useEffect(() => {
+    totalDurationMsRef.current = durationSeconds * 1000;
+    accumulatedElapsedMsRef.current = 0;
+    segmentStartRef.current = null;
+
     if (!enabled || isPaused) {
-      clearExistingTimer();
-      if (startTimestampRef.current !== null) {
-        const elapsed = Date.now() - startTimestampRef.current;
-        remainingMsRef.current = Math.max(0, remainingMsRef.current - elapsed);
-        startTimestampRef.current = null;
-      }
+      clearTimer();
       return;
     }
 
-    // Start timer with remaining duration
-    startTimestampRef.current = Date.now();
-    timerRef.current = setTimeout(() => {
-      triggerAdvance();
-    }, remainingMsRef.current);
+    segmentStartRef.current = Date.now();
 
-    // Visibility change listener: pause when tab is in background, resume when active
+    const tick = () => {
+      if (segmentStartRef.current === null) return;
+      const now = Date.now();
+      const currentSegmentElapsed = now - segmentStartRef.current;
+      const totalElapsed = Math.min(
+        totalDurationMsRef.current,
+        accumulatedElapsedMsRef.current + currentSegmentElapsed
+      );
+      const remainingMs = Math.max(0, totalDurationMsRef.current - totalElapsed);
+
+      const nextProgress =
+        totalDurationMsRef.current > 0
+          ? Math.min(1, totalElapsed / totalDurationMsRef.current)
+          : 1;
+      const nextRemaining = Math.max(0, Math.ceil(remainingMs / 1000));
+      const nextElapsed = Math.floor(totalElapsed / 1000);
+
+      setProgress(nextProgress);
+      setRemainingSeconds(nextRemaining);
+      setElapsedSeconds(nextElapsed);
+
+      if (totalElapsed >= totalDurationMsRef.current) {
+        clearTimer();
+        triggerAdvance();
+      }
+    };
+
+    intervalRef.current = setInterval(tick, 50);
+
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        clearExistingTimer();
-        if (startTimestampRef.current !== null) {
-          const elapsed = Date.now() - startTimestampRef.current;
-          remainingMsRef.current = Math.max(0, remainingMsRef.current - elapsed);
-          startTimestampRef.current = null;
+        clearTimer();
+        if (segmentStartRef.current !== null) {
+          accumulatedElapsedMsRef.current += Date.now() - segmentStartRef.current;
+          segmentStartRef.current = null;
         }
       } else {
-        if (remainingMsRef.current > 0) {
-          startTimestampRef.current = Date.now();
-          timerRef.current = setTimeout(() => {
-            triggerAdvance();
-          }, remainingMsRef.current);
+        if (accumulatedElapsedMsRef.current < totalDurationMsRef.current) {
+          segmentStartRef.current = Date.now();
+          intervalRef.current = setInterval(tick, 50);
         } else {
           triggerAdvance();
         }
@@ -102,12 +141,16 @@ export function usePrayerAutoAdvance({
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      clearExistingTimer();
+      clearTimer();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [enabled, isPaused, durationSeconds, clearExistingTimer, triggerAdvance]);
+  }, [enabled, isPaused, durationSeconds, clearTimer, triggerAdvance]);
 
   return {
+    progress,
+    remainingSeconds,
+    elapsedSeconds,
+    totalDurationSeconds,
     skip: triggerAdvance,
     extendTime,
   };

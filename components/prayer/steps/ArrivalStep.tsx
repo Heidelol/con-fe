@@ -3,6 +3,7 @@
 import React from "react";
 import { ArrivalStepData } from "@/types/prayer";
 import { usePrayerAutoAdvance } from "@/hooks/usePrayerAutoAdvance";
+import { ContemplativeProgress } from "@/components/prayer/ContemplativeProgress";
 
 interface ArrivalStepProps {
   data: ArrivalStepData;
@@ -11,7 +12,7 @@ interface ArrivalStepProps {
 }
 
 export function ArrivalStep({ data, onNext, isPaused = false }: ArrivalStepProps) {
-  const { skip } = usePrayerAutoAdvance({
+  const { progress, skip } = usePrayerAutoAdvance({
     enabled: data.autoAdvance?.enabled ?? true,
     durationSeconds: data.autoAdvance?.durationSeconds ?? 6,
     onAdvance: onNext,
@@ -49,12 +50,14 @@ export function ArrivalStep({ data, onNext, isPaused = false }: ArrivalStepProps
         </p>
       </div>
 
-      {/* Discrete bottom skip CTA */}
-      <div className="w-full flex justify-center pt-6">
+      {/* Discrete bottom contemplative progress & skip CTA */}
+      <div className="w-full flex flex-col items-center gap-3 pt-6">
+        <ContemplativeProgress progress={progress} />
+
         <button
           type="button"
           onClick={skip}
-          className="text-xs sm:text-[13px] font-sans font-medium text-[#6F8796] hover:text-[#17212A] py-2 px-4 rounded-full hover:bg-[#1F3443]/5 transition-colors focus-visible:ring-2 focus-visible:ring-[#1F3443] focus-visible:outline-none cursor-pointer"
+          className="text-xs sm:text-[13px] font-sans font-medium text-[#6F8796] hover:text-[#17212A] py-1.5 px-4 rounded-full hover:bg-[#1F3443]/5 transition-colors focus-visible:ring-2 focus-visible:ring-[#1F3443] focus-visible:outline-none cursor-pointer"
         >
           {data.autoAdvance?.skipText || "Continuar ahora"}
         </button>
