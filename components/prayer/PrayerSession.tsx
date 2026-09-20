@@ -247,11 +247,10 @@ export function PrayerSession({ config }: PrayerSessionProps) {
                 );
               }
             }}
-            onSaveIntention={() =>
-              handleSaveAction(
-                "Muy pronto podrás guardar este momento en tu espacio privado."
-              )
-            }
+            onSaveIntention={() => {
+              narration.pause();
+              router.push("/camino/intenciones/nueva");
+            }}
             isPaused={isExitDialogOpen}
           />
         )}

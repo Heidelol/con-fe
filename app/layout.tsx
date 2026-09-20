@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Source_Serif_4, Inter } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
+import { IntentionsProvider } from "@/context/IntentionsContext";
 import "./globals.css";
 
 const sourceSerif = Source_Serif_4({
@@ -53,7 +54,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192.svg" />
       </head>
       <body className="antialiased selection:bg-[#DCE6EB]">
-        <AppShell>{children}</AppShell>
+        <IntentionsProvider>
+          <AppShell>{children}</AppShell>
+        </IntentionsProvider>
       </body>
     </html>
   );

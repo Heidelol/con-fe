@@ -248,7 +248,12 @@ export function DailyPrayerExperience({ prayer }: DailyPrayerExperienceProps) {
       {mode === "completed" && (
         <DailyPrayerCompletion
           prayer={prayer}
-          onSaveIntention={() => setIsFutureDialogOpen(true)}
+          onSaveIntention={() => {
+            if (audioRef.current) {
+              audioRef.current.pause();
+            }
+            router.push("/camino/intenciones/nueva");
+          }}
           onListenAgain={handleListenAgain}
           onFinish={handleFinish}
         />
