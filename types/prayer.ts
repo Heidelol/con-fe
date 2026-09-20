@@ -14,10 +14,22 @@ export type PrayerStepType =
   | "scripture"
   | "completion";
 
+export interface StepVoiceConfig {
+  text: string; // Guion hablado que aporta contexto espiritual sin limitarse a leer la pantalla
+  audioUrl?: string; // Ruta al archivo de audio local o remoto cuando esté disponible
+  autoPlay?: boolean;
+}
+
+export type AdvanceStrategy = "timer" | "audio-ended" | "user";
+
+export type PrayerExperienceMode = "intro" | "voice" | "reading";
+
 export interface BaseStep {
   id: string;
   type: PrayerStepType;
   momentIndex?: number; // 1-indexed (1 to 5)
+  voice?: StepVoiceConfig;
+  advanceStrategy?: AdvanceStrategy;
 }
 
 export interface AutoAdvanceConfig {
@@ -56,11 +68,13 @@ export interface ContinuousReflectionStepData extends BaseStep {
     title: string;
     text: string;
     durationSeconds: number;
+    voice?: StepVoiceConfig;
   };
   phaseB: {
     title: string;
     text: string;
     durationSeconds: number;
+    voice?: StepVoiceConfig;
   };
   skipText: string;
 }
@@ -85,12 +99,14 @@ export interface SpiritualClosingStepData extends BaseStep {
     prayerLines: string[];
     durationSeconds: number;
     skipText: string;
+    voice?: StepVoiceConfig;
   };
   scripture: {
     title: string;
     passage: string;
     reference: string;
     reflection: string;
+    voice?: StepVoiceConfig;
   };
   saveIntentionText: string;
   finishText: string;

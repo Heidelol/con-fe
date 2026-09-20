@@ -2,10 +2,16 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PrayerSessionConfig } from "@/types/prayer";
+import {
+  PrayerSessionConfig,
+  PrayerExperienceMode,
+  StepVoiceConfig,
+} from "@/types/prayer";
 import { PrayerHeader } from "./PrayerHeader";
 import { PrayerExitDialog } from "./PrayerExitDialog";
 import { FutureFeatureDialog } from "./FutureFeatureDialog";
+import { PrayerExperienceIntro } from "./PrayerExperienceIntro";
+import { usePrayerNarration } from "@/hooks/usePrayerNarration";
 
 // 5 Spiritual Moments Renderers
 import { ArrivalStep } from "./steps/ArrivalStep";
@@ -31,6 +37,8 @@ interface PrayerSessionProps {
 
 export function PrayerSession({ config }: PrayerSessionProps) {
   const router = useRouter();
+  const [experienceMode, setExperienceMode] =
+    useState<PrayerExperienceMode>("intro");
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
@@ -38,9 +46,50 @@ export function PrayerSession({ config }: PrayerSessionProps) {
   const [futureDialogMessage, setFutureDialogMessage] = useState("");
   const [isFinishing, setIsFinishing] = useState(false);
 
+  // Subphase voice override for multi-phase steps (continuous-reflection & spiritual-closing)
+  const [subphaseVoiceOverride, setSubphaseVoiceOverride] = useState<
+    StepVoiceConfig | undefined
+  >(undefined);
+
   const currentStep = config.steps[currentStepIndex];
   const totalSteps = config.steps.length;
-  const currentMoment = currentStep?.momentIndex || (currentStepIndex + 1);
+  const currentMoment = currentStep?.momentIndex || currentStepIndex + 1;
+
+  // Derive default active voice from current step definition
+  const defaultStepVoice: StepVoiceConfig | undefined = (() => {
+    if (!currentStep) return undefined;
+    if (currentStep.type === "continuous-reflection") {
+      return currentStep.phaseA.voice || currentStep.voice;
+    }
+    if (currentStep.type === "spiritual-closing") {
+      return currentStep.optionalPrayer.voice || currentStep.voice;
+    }
+    return currentStep.voice;
+  })();
+
+  const activeVoice = subphaseVoiceOverride ?? defaultStepVoice;
+
+  // Narration Controller
+  const narration = usePrayerNarration({
+    voiceConfig: activeVoice,
+    experienceMode,
+    isPausedByModal: isExitDialogOpen || isFutureDialogOpen,
+  });
+
+  function handleSelectVoice() {
+    setExperienceMode("voice");
+    setSubphaseVoiceOverride(undefined);
+  }
+
+  function handleSelectReading() {
+    setExperienceMode("reading");
+    setSubphaseVoiceOverride(undefined);
+  }
+
+  function handleSwitchToReading() {
+    setExperienceMode("reading");
+    narration.pause();
+  }
 
   function handleUpdateAnswer(fieldKey: string, value: string) {
     setAnswers((prev) => ({ ...prev, [fieldKey]: value }));
@@ -49,12 +98,14 @@ export function PrayerSession({ config }: PrayerSessionProps) {
   function handleNext() {
     if (currentStepIndex < totalSteps - 1) {
       setCurrentStepIndex((prev) => prev + 1);
+      setSubphaseVoiceOverride(undefined);
     }
   }
 
   function handleBack() {
     if (currentStepIndex > 0) {
       setCurrentStepIndex((prev) => prev - 1);
+      setSubphaseVoiceOverride(undefined);
     }
   }
 
@@ -64,6 +115,7 @@ export function PrayerSession({ config }: PrayerSessionProps) {
 
   function handleConfirmExit() {
     setIsExitDialogOpen(false);
+    narration.pause();
     router.push("/");
   }
 
@@ -74,11 +126,28 @@ export function PrayerSession({ config }: PrayerSessionProps) {
 
   function handleFinish() {
     setIsFinishing(true);
+    narration.pause();
     setTimeout(() => {
       router.push("/");
     }, 1800);
   }
 
+  // 1. Initial Experience Mode Selector (Voice vs Reading)
+  if (experienceMode === "intro") {
+    return (
+      <div className="flex-1 flex flex-col min-h-screen bg-[#F7F4EE]">
+        <PrayerExperienceIntro
+          title={config.title}
+          internalTitle={config.internalTitle}
+          onSelectVoice={handleSelectVoice}
+          onSelectReading={handleSelectReading}
+          onBack={() => router.push("/")}
+        />
+      </div>
+    );
+  }
+
+  // 2. Farewell Screen
   if (isFinishing) {
     return (
       <div className="flex-1 min-h-[500px] flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 text-center bg-[#F7F4EE] select-none">
@@ -95,15 +164,20 @@ export function PrayerSession({ config }: PrayerSessionProps) {
     );
   }
 
+  // 3. Active Prayer Experience (Voice or Reading)
   return (
     <div className="flex-1 flex flex-col min-h-screen bg-[#F7F4EE]">
-      {/* Upper Navigation & Continuous 5-Moment Progress */}
+      {/* Upper Navigation, Voice Mode Controls & 5-Moment Progress */}
       <PrayerHeader
         currentMoment={currentMoment}
         totalMoments={5}
         canGoBack={currentStepIndex > 0}
         onBack={handleBack}
         onClose={handleCloseRequest}
+        experienceMode={experienceMode}
+        isNarrationPlaying={narration.isPlaying}
+        onToggleNarration={narration.toggle}
+        onSwitchToReading={handleSwitchToReading}
       />
 
       {/* Dynamic Step Content */}
@@ -135,6 +209,15 @@ export function PrayerSession({ config }: PrayerSessionProps) {
             key={currentStep.id}
             data={currentStep}
             onNext={handleNext}
+            onPhaseChange={(phase) => {
+              if (currentStep.type === "continuous-reflection") {
+                setSubphaseVoiceOverride(
+                  phase === "phaseA"
+                    ? currentStep.phaseA.voice
+                    : currentStep.phaseB.voice
+                );
+              }
+            }}
             isPaused={isExitDialogOpen}
           />
         )}
@@ -155,6 +238,15 @@ export function PrayerSession({ config }: PrayerSessionProps) {
             key={currentStep.id}
             data={currentStep}
             onFinish={handleFinish}
+            onPhaseChange={(phase) => {
+              if (currentStep.type === "spiritual-closing") {
+                setSubphaseVoiceOverride(
+                  phase === "prayer"
+                    ? currentStep.optionalPrayer.voice
+                    : currentStep.scripture.voice
+                );
+              }
+            }}
             onSaveIntention={() =>
               handleSaveAction(
                 "Muy pronto podrás guardar este momento en tu espacio privado."

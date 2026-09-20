@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SpiritualClosingStepData } from "@/types/prayer";
 import { usePrayerAutoAdvance } from "@/hooks/usePrayerAutoAdvance";
 import { ContemplativeProgress } from "@/components/prayer/ContemplativeProgress";
@@ -10,6 +10,7 @@ interface SpiritualClosingStepProps {
   data: SpiritualClosingStepData;
   onFinish: () => void;
   onSaveIntention: () => void;
+  onPhaseChange?: (phase: "prayer" | "scripture") => void;
   isPaused?: boolean;
 }
 
@@ -17,9 +18,14 @@ export function SpiritualClosingStep({
   data,
   onFinish,
   onSaveIntention,
+  onPhaseChange,
   isPaused = false,
 }: SpiritualClosingStepProps) {
   const [phase, setPhase] = useState<"prayer" | "scripture">("prayer");
+
+  useEffect(() => {
+    onPhaseChange?.(phase);
+  }, [phase, onPhaseChange]);
 
   // Timer for optional prayer phase (~14s)
   const { progress, skip: skipPrayer } = usePrayerAutoAdvance({

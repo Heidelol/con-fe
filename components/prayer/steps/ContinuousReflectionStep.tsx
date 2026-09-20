@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ContinuousReflectionStepData } from "@/types/prayer";
 import { usePrayerAutoAdvance } from "@/hooks/usePrayerAutoAdvance";
 import { ContemplativeProgress } from "@/components/prayer/ContemplativeProgress";
@@ -8,15 +8,21 @@ import { ContemplativeProgress } from "@/components/prayer/ContemplativeProgress
 interface ContinuousReflectionStepProps {
   data: ContinuousReflectionStepData;
   onNext: () => void;
+  onPhaseChange?: (phase: "phaseA" | "phaseB") => void;
   isPaused?: boolean;
 }
 
 export function ContinuousReflectionStep({
   data,
   onNext,
+  onPhaseChange,
   isPaused = false,
 }: ContinuousReflectionStepProps) {
   const [phase, setPhase] = useState<"phaseA" | "phaseB">("phaseA");
+
+  useEffect(() => {
+    onPhaseChange?.(phase);
+  }, [phase, onPhaseChange]);
 
   // Timer for Phase A (~8s)
   const { progress: progressA, skip: skipPhaseA } = usePrayerAutoAdvance({
