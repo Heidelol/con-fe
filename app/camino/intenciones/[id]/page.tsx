@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeftIcon, PlayIcon, SparklesIcon, HeartIcon } from "@/components/ui/Icons";
+import { useAuth } from "@/context/AuthContext";
 import { useIntentions } from "@/context/IntentionsContext";
 import { IntentionStatusBadge } from "@/components/intentions/IntentionStatusBadge";
 import { IntentionStatusSheet } from "@/components/intentions/IntentionStatusSheet";
@@ -12,24 +13,47 @@ import { IntentionStatus } from "@/types/intention";
 export default function IntentionDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { getIntention, updateStatus } = useIntentions();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const { getIntention, updateStatus, isLoading: isIntentionsLoading } = useIntentions();
   const [isStatusSheetOpen, setIsStatusSheetOpen] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
+
+  useEffect(() => {
+    if (!isAuthLoading && !user) {
+      router.replace(`/entrar?next=/camino/intenciones/${id}`);
+    }
+  }, [isAuthLoading, user, id, router]);
+
   const intention = getIntention(id);
 
+  if (isAuthLoading || (isIntentionsLoading && !intention)) {
+    return (
+      <main className="w-full flex flex-col select-none px-6 pt-5 pb-8 min-h-[50vh]">
+        <div className="animate-pulse flex flex-col gap-4">
+          <div className="h-8 w-16 bg-[#1F3443]/5 rounded-full" />
+          <div className="h-10 w-48 bg-[#1F3443]/5 rounded-xl" />
+          <div className="h-24 bg-[#1F3443]/5 rounded-2xl" />
+        </div>
+      </main>
+    );
+  }
+
+  // Si no existe, fue archivada, pertenece a otro usuario o RLS impidió el acceso:
+  // Respuesta neutra sin revelar existencia ni diferencias técnicas
   if (!intention) {
     return (
       <main className="w-full flex flex-col items-center justify-center p-6 text-center min-h-[400px]">
         <h2 className="font-serif text-[24px] text-[#17212A] mb-2">
-          Intención no encontrada
+          No encontramos esta intención.
         </h2>
         <p className="font-sans text-[14px] text-[#6F8796] mb-6">
           Esta intención ya no existe o fue archivada.
         </p>
         <Link
           href="/camino/intenciones"
-          className="py-2.5 px-5 rounded-full bg-[#1F3443] text-[#F7F4EE] font-sans text-xs font-medium"
+          className="py-2.5 px-5 rounded-full bg-[#1F3443] text-[#F7F4EE] font-sans text-xs font-medium cursor-pointer"
         >
           Volver a mis intenciones
         </Link>
@@ -37,10 +61,17 @@ export default function IntentionDetailPage() {
     );
   }
 
-  const handleStatusChange = (newStatus: IntentionStatus) => {
-    updateStatus(intention.id, newStatus);
-    if (newStatus === "archived") {
-      router.push("/camino/intenciones");
+  const handleStatusChange = async (newStatus: IntentionStatus) => {
+    setIsUpdatingStatus(true);
+    try {
+      await updateStatus(intention.id, newStatus);
+      if (newStatus === "archived") {
+        router.push("/camino/intenciones");
+      }
+    } catch {
+      // El error humano ya lo gestiona el context
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -122,7 +153,6 @@ export default function IntentionDetailPage() {
         {/* Primary CTA: Quiero orar por esto */}
         <Link
           href="/orar/preocupacion"
-          /* Future Prayer Engine payload: { intentionId: intention.id, category: intention.category } */
           className="w-full py-4 rounded-2xl bg-[#1F3443] text-[#F7F4EE] font-sans text-[15px] font-medium text-center shadow-[0_4px_16px_rgba(31,52,67,0.15)] hover:bg-[#284255] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <PlayIcon size={16} />
@@ -132,11 +162,12 @@ export default function IntentionDetailPage() {
         {/* Secondary Action: Esto cambió */}
         <button
           type="button"
+          disabled={isUpdatingStatus}
           onClick={() => setIsStatusSheetOpen(true)}
-          className="w-full py-3.5 rounded-2xl bg-white border border-[#1F3443]/12 text-[#17212A] font-sans text-[14px] font-medium hover:bg-[#F7F4EE] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+          className="w-full py-3.5 rounded-2xl bg-white border border-[#1F3443]/12 text-[#17212A] font-sans text-[14px] font-medium hover:bg-[#F7F4EE] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs disabled:opacity-60"
         >
           <HeartIcon size={16} className="text-[#A45A3E]" />
-          <span>Esto cambió</span>
+          <span>{isUpdatingStatus ? "Guardando…" : "Esto cambió"}</span>
         </button>
       </div>
 

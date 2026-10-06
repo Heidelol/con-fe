@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon } from "@/components/ui/Icons";
+import { useAuth } from "@/context/AuthContext";
 import { useIntentions } from "@/context/IntentionsContext";
 import { IntentionCard } from "@/components/intentions/IntentionCard";
 import { EmptyIntentions } from "@/components/intentions/EmptyIntentions";
@@ -10,9 +12,20 @@ import { EmptyIntentions } from "@/components/intentions/EmptyIntentions";
 type FilterType = "all" | "praying" | "gratitude";
 
 export default function IntentionsListPage() {
-  const { intentions, lastSavedId, clearLastSaved } = useIntentions();
+  const router = useRouter();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const { intentions, isLoading: isIntentionsLoading, error, lastSavedId, clearLastSaved } =
+    useIntentions();
+
   const [filter, setFilter] = useState<FilterType>("all");
   const [dismissedId, setDismissedId] = useState<string | null>(null);
+
+  // Redirigir a login si el usuario no tiene sesión
+  useEffect(() => {
+    if (!isAuthLoading && !user) {
+      router.replace("/entrar?next=/camino/intenciones");
+    }
+  }, [isAuthLoading, user, router]);
 
   const showSavedToast = Boolean(lastSavedId && lastSavedId !== dismissedId);
 
@@ -24,6 +37,18 @@ export default function IntentionsListPage() {
       return () => clearTimeout(timer);
     }
   }, [lastSavedId, dismissedId, clearLastSaved]);
+
+  if (isAuthLoading || (!user && isAuthLoading)) {
+    return (
+      <main className="w-full flex flex-col select-none px-6 pt-5 pb-8 min-h-[50vh]">
+        <div className="animate-pulse flex flex-col gap-4">
+          <div className="h-8 w-24 bg-[#1F3443]/5 rounded-full" />
+          <div className="h-8 w-48 bg-[#1F3443]/5 rounded-xl" />
+          <div className="h-20 bg-[#1F3443]/5 rounded-2xl" />
+        </div>
+      </main>
+    );
+  }
 
   // Filtered intentions
   const filteredIntentions = intentions.filter((item) => {
@@ -62,18 +87,28 @@ export default function IntentionsListPage() {
         </p>
       </header>
 
-      {/* Subtle saved confirmation banner */}
+      {/* Error discreto si hubo problema al cargar */}
+      {error && (
+        <div
+          role="alert"
+          className="w-full p-3.5 mb-5 rounded-2xl bg-[#A45A3E]/10 border border-[#A45A3E]/20 text-[#A45A3E] font-sans text-xs sm:text-[13px]"
+        >
+          {error}
+        </div>
+      )}
+
+      {/* Subtle saved confirmation banner - Copy exacto: "Intención guardada." */}
       {showSavedToast && (
         <div
           role="status"
           className="w-full p-3.5 mb-5 rounded-2xl bg-[#3B7A57]/10 border border-[#3B7A57]/20 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300"
         >
           <div className="flex items-center gap-2 text-[#245238]">
-            <span className="w-5 h-5 rounded-full bg-[#3B7A57] text-white flex items-center justify-center">
+            <span className="w-5 h-5 rounded-full bg-[#3B7A57] text-white flex items-center justify-center shrink-0">
               <CheckIcon size={12} />
             </span>
             <span className="font-sans text-xs sm:text-[13px] font-medium">
-              Intención guardada con serenidad.
+              Intención guardada.
             </span>
           </div>
 
@@ -122,8 +157,7 @@ export default function IntentionsListPage() {
                 : "bg-white/80 border border-[#1F3443]/8 text-[#6F8796] hover:text-[#17212A] hover:bg-white"
             }`}
           >
-            En oración (
-            {intentions.filter((i) => i.status === "praying").length})
+            En oración ({intentions.filter((i) => i.status === "praying").length})
           </button>
 
           <button
@@ -143,8 +177,13 @@ export default function IntentionsListPage() {
         </div>
       )}
 
-      {/* List or Empty State */}
-      {filteredIntentions.length > 0 ? (
+      {/* Loading Skeleton */}
+      {isIntentionsLoading ? (
+        <div className="flex flex-col gap-3.5 animate-pulse">
+          <div className="h-24 rounded-2xl bg-white/70 border border-[#1F3443]/5" />
+          <div className="h-24 rounded-2xl bg-white/70 border border-[#1F3443]/5" />
+        </div>
+      ) : filteredIntentions.length > 0 ? (
         <div className="flex flex-col gap-3.5">
           {filteredIntentions.map((intention) => (
             <IntentionCard key={intention.id} intention={intention} />

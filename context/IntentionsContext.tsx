@@ -1,14 +1,32 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
 import { PrayerIntention, IntentionStatus } from "@/types/intention";
-import { initialMockIntentions } from "@/data/intentions/mock-intentions";
+import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/lib/supabase/client";
+import {
+  getIntentions,
+  createIntention as repoCreateIntention,
+  updateIntentionStatus as repoUpdateIntentionStatus,
+  deleteIntention as repoDeleteIntention,
+} from "@/lib/intentions/repository";
 
 interface IntentionsContextType {
   intentions: PrayerIntention[];
-  addIntention: (title: string, note?: string) => string;
-  updateStatus: (id: string, status: IntentionStatus) => void;
+  isLoading: boolean;
+  error: string | null;
+  addIntention: (title: string, note?: string, category?: string) => Promise<string>;
+  updateStatus: (id: string, status: IntentionStatus) => Promise<void>;
   getIntention: (id: string) => PrayerIntention | undefined;
+  deleteIntentionById: (id: string) => Promise<void>;
+  refreshIntentions: () => Promise<void>;
   lastSavedId: string | null;
   clearLastSaved: () => void;
 }
@@ -18,40 +36,135 @@ const IntentionsContext = createContext<IntentionsContextType | undefined>(
 );
 
 export function IntentionsProvider({ children }: { children: ReactNode }) {
-  const [intentions, setIntentions] =
-    useState<PrayerIntention[]>(initialMockIntentions);
+  const { user } = useAuth();
+  const [intentions, setIntentions] = useState<PrayerIntention[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(() => Boolean(user));
+  const [error, setError] = useState<string | null>(null);
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
 
-  const addIntention = (title: string, note?: string): string => {
-    const newId = `intencion-${Date.now()}`;
-    const newIntention: PrayerIntention = {
-      id: newId,
-      title: title.trim(),
-      note: note?.trim() || undefined,
-      status: "praying",
-      createdAt: "Hoy",
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const supabase = createClient();
+    if (!supabase) {
+      return;
+    }
+
+    let isMounted = true;
+
+    getIntentions(supabase)
+      .then((data) => {
+        if (isMounted) {
+          setIntentions(data);
+          setError(null);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setError(
+            "No pudimos cargar tus intenciones. Intenta nuevamente en un momento."
+          );
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
     };
-    setIntentions((prev) => [newIntention, ...prev]);
-    setLastSavedId(newId);
-    return newId;
+  }, [user]);
+
+  const refreshIntentions = useCallback(async () => {
+    if (!user) {
+      setIntentions([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const supabase = createClient();
+    if (!supabase) return;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await getIntentions(supabase);
+      setIntentions(data);
+    } catch {
+      setError(
+        "No pudimos cargar tus intenciones. Intenta nuevamente en un momento."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  const addIntention = async (
+    title: string,
+    note?: string,
+    category?: string
+  ): Promise<string> => {
+    const supabase = createClient();
+    if (!supabase || !user) {
+      throw new Error("Debes iniciar sesión para guardar intenciones.");
+    }
+
+    setError(null);
+    try {
+      const created = await repoCreateIntention(supabase, {
+        title,
+        note,
+        category,
+      });
+
+      setIntentions((prev) => [created, ...prev]);
+      setLastSavedId(created.id);
+      return created.id;
+    } catch {
+      const humanMessage =
+        "No pudimos guardar tu intención. Lo que escribiste sigue aquí. Intenta nuevamente.";
+      setError(humanMessage);
+      throw new Error(humanMessage);
+    }
   };
 
-  const updateStatus = (id: string, status: IntentionStatus) => {
-    setIntentions((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status,
-              updatedAt: "Hoy",
-              resolvedAt:
-                status === "answered" || status === "gratitude"
-                  ? "Hoy"
-                  : item.resolvedAt,
-            }
-          : item
-      )
-    );
+  const updateStatus = async (id: string, status: IntentionStatus) => {
+    const supabase = createClient();
+    if (!supabase || !user) {
+      throw new Error("Debes iniciar sesión para modificar intenciones.");
+    }
+
+    setError(null);
+    try {
+      const updated = await repoUpdateIntentionStatus(supabase, id, status);
+      setIntentions((prev) =>
+        prev.map((item) => (item.id === id ? updated : item))
+      );
+    } catch {
+      const humanMessage =
+        "No pudimos actualizar el estado de tu intención. Intenta nuevamente.";
+      setError(humanMessage);
+      throw new Error(humanMessage);
+    }
+  };
+
+  const deleteIntentionById = async (id: string) => {
+    const supabase = createClient();
+    if (!supabase || !user) {
+      throw new Error("Debes iniciar sesión para eliminar intenciones.");
+    }
+
+    setError(null);
+    try {
+      await repoDeleteIntention(supabase, id);
+      setIntentions((prev) => prev.filter((item) => item.id !== id));
+    } catch {
+      const humanMessage =
+        "No pudimos eliminar la intención. Intenta nuevamente.";
+      setError(humanMessage);
+      throw new Error(humanMessage);
+    }
   };
 
   const getIntention = (id: string): PrayerIntention | undefined => {
@@ -62,13 +175,21 @@ export function IntentionsProvider({ children }: { children: ReactNode }) {
     setLastSavedId(null);
   };
 
+  // Solo exponer intenciones cuando el usuario está autenticado
+  const currentIntentions = user ? intentions : [];
+  const currentLoading = user ? isLoading : false;
+
   return (
     <IntentionsContext.Provider
       value={{
-        intentions,
+        intentions: currentIntentions,
+        isLoading: currentLoading,
+        error,
         addIntention,
         updateStatus,
         getIntention,
+        deleteIntentionById,
+        refreshIntentions,
         lastSavedId,
         clearLastSaved,
       }}
@@ -81,7 +202,7 @@ export function IntentionsProvider({ children }: { children: ReactNode }) {
 export function useIntentions() {
   const context = useContext(IntentionsContext);
   if (!context) {
-    throw new Error("useIntentions must be used within an IntentionsProvider");
+    throw new Error("useIntentions debe usarse dentro de un IntentionsProvider");
   }
   return context;
 }

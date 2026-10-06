@@ -9,6 +9,7 @@ import { ReadingMode } from "./ReadingMode";
 import { DailyPrayerCompletion } from "./DailyPrayerCompletion";
 import { PrayerExitDialog } from "@/components/prayer/PrayerExitDialog";
 import { FutureFeatureDialog } from "@/components/prayer/FutureFeatureDialog";
+import { useAuth } from "@/context/AuthContext";
 
 interface DailyPrayerExperienceProps {
   prayer: DailyPrayer;
@@ -16,6 +17,7 @@ interface DailyPrayerExperienceProps {
 
 export function DailyPrayerExperience({ prayer }: DailyPrayerExperienceProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [mode, setMode] = useState<ExperienceMode>("intro");
@@ -252,7 +254,10 @@ export function DailyPrayerExperience({ prayer }: DailyPrayerExperienceProps) {
             if (audioRef.current) {
               audioRef.current.pause();
             }
-            router.push("/camino/intenciones/nueva");
+            const target = user
+              ? "/camino/intenciones/nueva"
+              : "/entrar?next=/camino/intenciones/nueva";
+            router.push(target);
           }}
           onListenAgain={handleListenAgain}
           onFinish={handleFinish}

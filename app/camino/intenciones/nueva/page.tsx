@@ -1,26 +1,59 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeftIcon, MicrophoneIcon, CloseIcon } from "@/components/ui/Icons";
+import { useAuth } from "@/context/AuthContext";
 import { useIntentions } from "@/context/IntentionsContext";
 
 export default function NewIntentionPage() {
   const router = useRouter();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { addIntention } = useIntentions();
 
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [isVoiceMockOpen, setIsVoiceMockOpen] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
+  useEffect(() => {
+    if (!isAuthLoading && !user) {
+      router.replace("/entrar?next=/camino/intenciones/nueva");
+    }
+  }, [isAuthLoading, user, router]);
 
-    addIntention(title, note);
-    router.push("/camino/intenciones");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setFormError(null);
+
+    try {
+      await addIntention(title, note);
+      // Redirigir a la lista donde se mostrará "Intención guardada."
+      router.push("/camino/intenciones");
+    } catch {
+      // Estado de error humano sin borrar los inputs del usuario
+      setFormError(
+        "No pudimos guardar tu intención. Lo que escribiste sigue aquí. Intenta nuevamente."
+      );
+      setIsSubmitting(false);
+    }
   };
+
+  if (isAuthLoading) {
+    return (
+      <main className="w-full flex flex-col select-none px-6 pt-5 pb-8 min-h-[50vh]">
+        <div className="animate-pulse flex flex-col gap-4">
+          <div className="h-8 w-16 bg-[#1F3443]/5 rounded-full" />
+          <div className="h-10 w-48 bg-[#1F3443]/5 rounded-xl" />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="w-full flex flex-col justify-between min-h-[85vh] select-none px-6 pt-5 pb-8">
@@ -55,6 +88,16 @@ export default function NewIntentionPage() {
           </p>
         </div>
 
+        {/* Human Error Notice if insert fails */}
+        {formError && (
+          <div
+            role="alert"
+            className="w-full p-4 mb-6 rounded-2xl bg-[#A45A3E]/10 border border-[#A45A3E]/20 text-[#A45A3E] font-sans text-xs sm:text-[13px] leading-relaxed animate-in fade-in"
+          >
+            {formError}
+          </div>
+        )}
+
         {/* Voice vs Text toggle */}
         <div className="flex items-center gap-2 mb-6">
           <button
@@ -87,7 +130,9 @@ export default function NewIntentionPage() {
               placeholder="Mi mamá, mi trabajo, una decisión…"
               autoFocus
               required
-              className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#1F3443]/15 text-[#17212A] font-sans text-[15px] placeholder:text-[#6F8796]/60 focus:border-[#1F3443] focus:ring-1 focus:ring-[#1F3443] focus:outline-none transition-all shadow-2xs"
+              maxLength={200}
+              disabled={isSubmitting}
+              className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#1F3443]/15 text-[#17212A] font-sans text-[15px] placeholder:text-[#6F8796]/60 focus:border-[#1F3443] focus:ring-1 focus:ring-[#1F3443] focus:outline-none transition-all shadow-2xs disabled:opacity-60"
             />
           </div>
 
@@ -105,7 +150,9 @@ export default function NewIntentionPage() {
               onChange={(e) => setNote(e.target.value)}
               placeholder="Puedes escribir unas palabras o dejarlo así."
               rows={3}
-              className="w-full bg-white rounded-2xl p-4 border border-[#1F3443]/15 text-[#17212A] font-sans text-[15px] leading-relaxed placeholder:text-[#6F8796]/60 focus:border-[#1F3443] focus:ring-1 focus:ring-[#1F3443] focus:outline-none transition-all shadow-2xs resize-none"
+              maxLength={2000}
+              disabled={isSubmitting}
+              className="w-full bg-white rounded-2xl p-4 border border-[#1F3443]/15 text-[#17212A] font-sans text-[15px] leading-relaxed placeholder:text-[#6F8796]/60 focus:border-[#1F3443] focus:ring-1 focus:ring-[#1F3443] focus:outline-none transition-all shadow-2xs resize-none disabled:opacity-60"
             />
           </div>
         </form>
@@ -116,10 +163,10 @@ export default function NewIntentionPage() {
         <button
           type="submit"
           form="new-intention-form"
-          disabled={!title.trim()}
+          disabled={!title.trim() || isSubmitting}
           className="w-full py-4 rounded-2xl bg-[#1F3443] text-[#F7F4EE] font-sans text-[15px] font-medium text-center shadow-[0_4px_16px_rgba(31,52,67,0.15)] hover:bg-[#284255] active:scale-[0.98] transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
         >
-          Guardar intención
+          {isSubmitting ? "Guardando intención…" : "Guardar intención"}
         </button>
       </div>
 

@@ -12,6 +12,7 @@ import { PrayerExitDialog } from "./PrayerExitDialog";
 import { FutureFeatureDialog } from "./FutureFeatureDialog";
 import { PrayerExperienceIntro } from "./PrayerExperienceIntro";
 import { usePrayerNarration } from "@/hooks/usePrayerNarration";
+import { useAuth } from "@/context/AuthContext";
 
 // 5 Spiritual Moments Renderers
 import { ArrivalStep } from "./steps/ArrivalStep";
@@ -37,6 +38,7 @@ interface PrayerSessionProps {
 
 export function PrayerSession({ config }: PrayerSessionProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const [experienceMode, setExperienceMode] =
     useState<PrayerExperienceMode>("intro");
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -249,7 +251,10 @@ export function PrayerSession({ config }: PrayerSessionProps) {
             }}
             onSaveIntention={() => {
               narration.pause();
-              router.push("/camino/intenciones/nueva");
+              const target = user
+                ? "/camino/intenciones/nueva"
+                : "/entrar?next=/camino/intenciones/nueva";
+              router.push(target);
             }}
             isPaused={isExitDialogOpen}
           />

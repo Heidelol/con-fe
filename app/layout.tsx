@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Source_Serif_4, Inter } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
+import { AuthProvider } from "@/context/AuthContext";
 import { IntentionsProvider } from "@/context/IntentionsContext";
 import "./globals.css";
 
@@ -54,9 +55,11 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192.svg" />
       </head>
       <body className="antialiased selection:bg-[#DCE6EB]">
-        <IntentionsProvider>
-          <AppShell>{children}</AppShell>
-        </IntentionsProvider>
+        <AuthProvider>
+          <IntentionsProvider>
+            <AppShell>{children}</AppShell>
+          </IntentionsProvider>
+        </AuthProvider>
       </body>
     </html>
   );
